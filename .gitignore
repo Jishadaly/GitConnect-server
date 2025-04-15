@@ -1,0 +1,7 @@
+# Node modules
+node_modules/
+
+# Add other files you want to ignore
+.env
+.vscode/
+*.log
