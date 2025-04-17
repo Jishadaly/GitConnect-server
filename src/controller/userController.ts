@@ -10,11 +10,11 @@ export const createUser = async (req: Request, res: Response, next: NextFunction
        res.status(HttpStatusCodes.BAD_REQUEST).send({ message: "Username is required" });
     }
 
-    const {user, followers , repositories} = await userService.fetchAndSaveUser(username);
+    const {user, followersList , repos} = await userService.fetchAndSaveUser(username);
     res.status(HttpStatusCodes.CREATED).send({
       user,
-      repositories,
-      followers,
+      repos,
+      followersList,
     });
   } catch (err) {
     console.error("Error creating user:", err);

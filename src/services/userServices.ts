@@ -49,8 +49,8 @@ export const fetchAndSaveUser = async (username: string) => {
 
   return {
     user: existingUser,
-    repositories: repositories.data,
-    followers: followers.data
+    repos: repositories.data,
+    followersList: followers.data
   }
 };
 
