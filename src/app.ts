@@ -3,7 +3,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 import express, { Request, Response, NextFunction } from 'express';
 import userRoutes from './routes/userRoute';
-import { RequestValidationError } from './utils/reqValidtionErr';
+import { NotFoundError, RequestValidationError , CustomErr } from './utils/reqValidtionErr';
 import cors from 'cors';
 
 
@@ -25,6 +25,7 @@ app.use('/api/users', userRoutes);
 // Error handling middleware
 app.use(
     (err: Error, req: Request, res: Response, next: NextFunction): any => {
+        console.log(err)
         if (err instanceof RequestValidationError) {
             // Custom validation error
             return res.status(err.statusCode).json({
@@ -32,8 +33,20 @@ app.use(
             });
         }
 
+        if (err instanceof NotFoundError) {
+            // Not found error
+            return res.status(err.statusCode).json({
+                message: err.message
+            });
+        }
+
+
         // Generic error handling
-        return res.status(500).json({ message: 'Internal server error' });
+        const statusCode = err instanceof CustomErr ? err.statusCode : 500;
+        const message = err instanceof CustomErr ? err.message : 'Internal server error';
+        
+        
+        return res.status(statusCode).json({ message });
     }
 );
 

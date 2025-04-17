@@ -34,3 +34,13 @@ export class RequestValidationError extends CustomErr {
         });
     }
 }
+
+// Add to your error utility file
+export class NotFoundError extends CustomErr {
+    statusCode = 404;
+
+    constructor(public resource: string) {
+        super(`${resource} not found`);
+        Object.setPrototypeOf(this, NotFoundError.prototype);
+    }
+}

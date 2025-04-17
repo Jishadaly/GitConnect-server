@@ -2,6 +2,8 @@ import axios from 'axios';
 import User from '../models/userModel';
 import { IGitUserProfile } from '../types/user';
 import mongoose from 'mongoose';
+import FriendModel from '../models/friendModal';
+import { NotFoundError } from '../utils/reqValidtionErr';
 
 const GIT_API = process.env.GIT_BASEURI!;
 const GIT_TOKEN = process.env.GIT_TOKEN!;
@@ -99,9 +101,55 @@ export const softDeleteUser = async (userId: string) => {
     { new: true }
   )
 
-  if (!user) {
-    throw new Error("User not found")
-  }
+  if (!user) throw new NotFoundError("User");
 
   return user
 }
+
+
+export const findAndSaveMutualFriends = async (username: string) => {
+  const user = await User.findOne({ login: username });
+  if (!user) throw new NotFoundError("User");
+  
+  const [followers, followings] = await Promise.all([
+    axios.get(`${GIT_API}/${username}/followers`, requestConfig),
+    axios.get(`${GIT_API}/${username}/following`, requestConfig),
+  ]).catch((err) => {
+   throw new NotFoundError("please add valid user name, this user friends");
+  });
+  
+
+  const mutuals = followers.data
+  .filter((follower: any) =>
+    followings.data.some((follow: any) => follow.login === follower.login)
+  )
+  .map((user: any) => ({
+    login: user.login,
+    avatar: user.avatar_url,
+    type: user.type,
+  }));
+
+  const updatedDoc = await FriendModel.findOneAndUpdate(
+    { user: user._id },
+    { friends: mutuals },
+    { upsert: true, new: true }
+  );
+
+  return { userId: user._id, friendsDoc: updatedDoc };
+};
+
+
+export const searchUsers = async (usernameQuery: string) => {
+  const regex = new RegExp(usernameQuery, 'i'); // Case-insensitive partial match
+  const users = await User.find({ username: { $regex: regex }, isDeleted: false });
+  return users;
+};
+
+export const updateUser = async (id: string, data: Partial<IGitUserProfile>) => {
+  if (!mongoose.Types.ObjectId.isValid(id)) throw new Error("Invalid user ID");
+
+  const updatedUser = await User.findByIdAndUpdate(id, data, { new: true });
+  if (!updatedUser) throw new Error("User not found");
+
+  return updatedUser;
+};

@@ -11,10 +11,6 @@ export const createUser = async (req: Request, res: Response, next: NextFunction
     }
 
     const {user, followers , repositories} = await userService.fetchAndSaveUser(username);
-
-    // const { repos, followers, mutuals } = await userService.findMutualFollowers(username);
-    
-
     res.status(HttpStatusCodes.CREATED).send({
       user,
       repositories,
@@ -69,3 +65,52 @@ export const deleteUser = async (req: Request, res: Response, next: NextFunction
     next(err)
   }
 }
+
+
+// Find and save mutual followers
+export const getMutualFriends = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { username } = req.params;
+    const mutuals = await userService.findAndSaveMutualFriends(username);
+
+    res.status(HttpStatusCodes.OK).json({
+      message: "Mutual friends saved successfully",
+      ...mutuals
+    });
+  } catch (error) {
+    // console.error("Mutual friend error:", error);
+    next(error);
+  }
+};
+
+// Search users by partial username
+export const searchUsers = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { username } = req.query;
+    if (!username) {
+      return res.status(HttpStatusCodes.BAD_REQUEST).json({ message: "Username query required" });
+    }
+
+    const users = await userService.searchUsers(username as string);
+    res.status(HttpStatusCodes.OK).json({ users });
+  } catch (error) {
+    console.error("Search user error:", error);
+    next(error);
+  }
+};
+
+// Update user by ID
+export const updateUser = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const updated = await userService.updateUser(id, req.body);
+
+    res.status(HttpStatusCodes.OK).json({
+      message: "User updated successfully",
+      user: updated,
+    });
+  } catch (error) {
+    console.error("Update user error:", error);
+    next(error);
+  }
+};
