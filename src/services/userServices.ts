@@ -1,40 +1,107 @@
 import axios from 'axios';
 import User from '../models/userModel';
+import { IGitUserProfile } from '../types/user';
+import mongoose from 'mongoose';
+
+const GIT_API = process.env.GIT_BASEURI!;
+const GIT_TOKEN = process.env.GIT_TOKEN!;
+
+console.log(GIT_API, GIT_TOKEN)
+
+const requestConfig = {
+  headers: {
+    Authorization: `Bearer ${GIT_TOKEN}`,
+  },
+};
 
 export const fetchAndSaveUser = async (username: string) => {
-    
-  const existingUser = await User.findOne({ username, isDeleted: false });
-  if (existingUser) return existingUser;
+  // 1. Check if user already exists
+  let existingUser = await User.findOne({ username: username, isDeleted: false });
 
-  const { data } = await axios.get(`https://api.github.com/users/${username}`);
-  const newUser = new User({
-    username: data.login,
-    name: data.name,
-    location: data.location,
-    blog: data.blog,
-    bio: data.bio,
-    public_repos: data.public_repos,
-    public_gists: data.public_gists,
-    followers: data.followers,
-    following: data.following,
-    github_created_at: data.created_at,
-  });
-  return await newUser.save();
+  if (!existingUser) {
+    const { data } = await axios.get(`${GIT_API}/${username}`, requestConfig);
+    const gitUser = data as IGitUserProfile;
+
+    existingUser = new User({
+      login: gitUser.login,
+      username: username,
+      name: gitUser.name,
+      location: gitUser.location,
+      avatar: gitUser.avatar_url,
+      blog: gitUser.blog,
+      bio: gitUser.bio,
+      public_repos: gitUser.public_repos,
+      public_gists: gitUser.public_gists,
+      followers: gitUser.followers,
+      following: gitUser.following,
+      github_created_at: gitUser.created_at,
+    });
+    // 4. Save to DB and return
+    await existingUser.save();
+  }
+
+  const [repositories, followers] = await Promise.all([
+    axios.get(`${GIT_API}/${username}/repos`, requestConfig),
+    axios.get(`${GIT_API}/${username}/followers`, requestConfig),
+  ]);
+
+  return {
+    user: existingUser,
+    repositories: repositories.data,
+    followers: followers.data
+  }
 };
 
-export const findMutualFriends = async (username: string) => {
-  const { data: followingList } = await axios.get(`https://api.github.com/users/${username}/following`);
-  const { data: followersList } = await axios.get(`https://api.github.com/users/${username}/followers`);
+export const findMutualFollowers = async (username: string) => {
+  const [repositories, followers, followings] = await Promise.all([
+    axios.get(`${GIT_API}/${username}/repos`, requestConfig),
+    axios.get(`${GIT_API}/${username}/followers`, requestConfig),
+    axios.get(`${GIT_API}/${username}/followings`, requestConfig),
 
-  const mutuals = followingList.filter((f: any) =>
-    followersList.find((x: any) => x.login === f.login)
+  ]);
+
+  const user = await User.findOne({ login: username });
+  const mutualUsers = followers.data.filter((follower: any) =>
+    followings.data.some((following: any) => following.login === follower.login)
   );
 
-  const user = await User.findOne({ username });
-  const mutualUsernames = mutuals.map((u: any) => u.login);
-  const mutualUsers = await User.find({ username: { $in: mutualUsernames }, isDeleted: false });
-
-  user!.friends = mutualUsers.map(u => u._id);
-  await user!.save();
-  return mutualUsers;
+  return {
+    user,
+    repos: repositories.data,
+    followers: followers.data,
+    followings: followings.data,
+    mutuals: mutualUsers,
+  };
 };
+
+export const getUsersSorted = async (sortBy: string, order: string): Promise<IGitUserProfile[]> => {
+  const sortOrder = order === 'desc' ? -1 : 1;  // Handle sorting order (asc or desc)
+
+  try {
+    const users = await User.find({ isDeleted: false })
+      .sort({ [sortBy]: sortOrder })
+      .exec();
+    return users;
+  } catch (err) {
+    console.error("Error fetching sorted users:", err);
+    throw new Error("Error fetching sorted users");
+  }
+};
+
+export const softDeleteUser = async (userId: string) => {
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    throw new Error("Invalid user ID")
+  }
+
+  const user = await User.findByIdAndUpdate(
+    userId,
+    { isDeleted: true },
+    { new: true }
+  )
+
+  if (!user) {
+    throw new Error("User not found")
+  }
+
+  return user
+}
