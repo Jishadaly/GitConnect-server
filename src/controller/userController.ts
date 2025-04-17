@@ -86,18 +86,31 @@ export const getMutualFriends = async (req: Request, res: Response, next: NextFu
 // Search users by partial username
 export const searchUsers = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { username } = req.query;
-    if (!username) {
-      return res.status(HttpStatusCodes.BAD_REQUEST).json({ message: "Username query required" });
+    const queryKeys = Object.keys(req.query);
+
+    if (queryKeys.length === 0) {
+       res.status(HttpStatusCodes.BAD_REQUEST).json({ message: "At least one query param required" });
+       return;
     }
 
-    const users = await userService.searchUsers(username as string);
+    const [key] = queryKeys;
+    const value = req.query[key] as string;
+
+    const searchableFields = ["login", "name", "username", "location", "blog", "bio"];
+
+    if (!searchableFields.includes(key)) {
+       res.status(HttpStatusCodes.BAD_REQUEST).json({ message: `Invalid query field: ${key}` });
+    }
+
+    const users = await userService.searchUsersByField(key, value);
     res.status(HttpStatusCodes.OK).json({ users });
+
   } catch (error) {
     console.error("Search user error:", error);
     next(error);
   }
 };
+
 
 // Update user by ID
 export const updateUser = async (req: Request, res: Response, next: NextFunction) => {

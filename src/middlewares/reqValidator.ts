@@ -1,31 +1,44 @@
-// src/validators/requestValidator.ts
 import { Request, Response, NextFunction } from "express";
-import { validationResult, ValidationError } from "express-validator";
+import { validationResult, FieldValidationError, ValidationError } from "express-validator";
 import { RequestValidationError } from "../utils/reqValidtionErr";
-import { IValidationErr } from "../types/validationErr"; // Import IValidationErr
+import { IValidationErr } from "../types/validationErr";
 
-// Request validation middleware
+// Type guard to check if error is FieldValidationError
+function isFieldValidationError(error: ValidationError): error is FieldValidationError {
+  return "path" in error && "location" in error;
+}
+
 export const validateRequest = (
-    req: Request,
-    res: Response,
-    next: NextFunction
+  req: Request,
+  res: Response,
+  next: NextFunction
 ): void => {
-    const errors = validationResult(req);
+  const errors = validationResult(req);
 
-    if (!errors.isEmpty()) {
-        // Map express-validator's ValidationError to your custom IValidationErr
-        const formattedErrors: IValidationErr[] = errors.array().map((error: ValidationError) => ({
-            type: error.msg,         // error message becomes 'type'
-            value: error.value || '', // value being validated
-            msg: error.msg,          // validation error message
-            param: error.param,      // the field name being validated
-            location: error.location || 'body',  // assuming 'body' if no location specified
-        }));
+  if (!errors.isEmpty()) {
+    const formattedErrors: IValidationErr[] = errors.array().map((error) => {
+      if (isFieldValidationError(error)) {
+        return {
+          type: "field",
+          value: error.value?.toString() || "",
+          msg: error.msg,
+          param: error.path,
+          location: error.location || "body",
+        };
+      }
 
-        // If there are validation errors, throw a custom validation error
-        throw new RequestValidationError(formattedErrors);
-    }
+      // fallback for alternative validation errors
+      return {
+        type: "field",
+        value: "",
+        msg: error.msg,
+        param: "unknown",
+        location: "body",
+      };
+    });
 
-    // If validation passes, proceed to the next middleware or route handler
-    next();
+    throw new RequestValidationError(formattedErrors);
+  }
+
+  next();
 };

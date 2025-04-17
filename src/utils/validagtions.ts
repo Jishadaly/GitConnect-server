@@ -36,7 +36,6 @@ export const userUpdateRules = [
     body('blog')
         .optional()
         .trim()
-        .isURL().withMessage('Blog must be a valid URL')
         .isLength({ max: 200 }).withMessage('Blog URL too long (max 200 characters)'),
 
     body('bio')
@@ -44,4 +43,23 @@ export const userUpdateRules = [
         .trim()
         .isString().withMessage('Bio should be a string')
         .isLength({ max: 300 }).withMessage('Bio cannot exceed 300 characters')
+];
+
+export const userDeleteRules = [
+    param('id')
+        .trim()
+        .notEmpty().withMessage('User ID is required')
+        .isMongoId().withMessage('Invalid user ID format'),
+];
+
+export const userGetSortedRules = [
+    query('sortBy')
+        .optional()
+        .isIn(['created_at', 'username', 'name', 'location', 'login'])
+        .withMessage('Invalid sortBy field'),
+
+    query('order')
+        .optional()
+        .isIn(['asc', 'desc'])
+        .withMessage('Order must be either asc or desc'),
 ];

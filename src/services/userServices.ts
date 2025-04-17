@@ -110,7 +110,7 @@ export const softDeleteUser = async (userId: string) => {
 export const findAndSaveMutualFriends = async (username: string) => {
   const user = await User.findOne({ login: username });
   if (!user) throw new NotFoundError("User");
-  
+
   const [followers, followings] = await Promise.all([
     axios.get(`${GIT_API}/${username}/followers`, requestConfig),
     axios.get(`${GIT_API}/${username}/following`, requestConfig),
@@ -139,11 +139,18 @@ export const findAndSaveMutualFriends = async (username: string) => {
 };
 
 
-export const searchUsers = async (usernameQuery: string) => {
-  const regex = new RegExp(usernameQuery, 'i'); // Case-insensitive partial match
-  const users = await User.find({ username: { $regex: regex }, isDeleted: false });
+export const searchUsersByField = async (field: string, value: string) => {
+  const regex = new RegExp(value, 'i'); // Case-insensitive search
+
+  const users = await User.find({
+    [field]: { $regex: regex },
+    isDeleted: false,
+  }).select('login name username location avatar blog bio');
+
   return users;
 };
+
+
 
 export const updateUser = async (id: string, data: Partial<IGitUserProfile>) => {
   if (!mongoose.Types.ObjectId.isValid(id)) throw new Error("Invalid user ID");
