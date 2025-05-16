@@ -8,8 +8,6 @@ import { NotFoundError } from '../utils/reqValidtionErr';
 const GIT_API = process.env.GIT_BASEURI!;
 const GIT_TOKEN = process.env.GIT_TOKEN!;
 
-console.log(GIT_API, GIT_TOKEN)
-
 const requestConfig = {
   headers: {
     Authorization: `Bearer ${GIT_TOKEN}`,
@@ -17,7 +15,7 @@ const requestConfig = {
 };
 
 export const fetchAndSaveUser = async (username: string) => {
-  // 1. Check if user already exists
+
   let existingUser = await User.findOne({ username: username, isDeleted: false });
 
   if (!existingUser) {
@@ -38,7 +36,7 @@ export const fetchAndSaveUser = async (username: string) => {
       following: gitUser.following,
       github_created_at: gitUser.created_at,
     });
-    // 4. Save to DB and return
+
     await existingUser.save();
   }
 
@@ -77,7 +75,7 @@ export const findMutualFollowers = async (username: string) => {
 };
 
 export const getUsersSorted = async (sortBy: string, order: string): Promise<IGitUserProfile[]> => {
-  const sortOrder = order === 'desc' ? -1 : 1;  // Handle sorting order (asc or desc)
+  const sortOrder = order === 'desc' ? -1 : 1;
 
   try {
     const users = await User.find({ isDeleted: false })
@@ -140,7 +138,7 @@ export const findAndSaveMutualFriends = async (username: string) => {
 
 
 export const searchUsersByField = async (field: string, value: string) => {
-  const regex = new RegExp(value, 'i'); // Case-insensitive search
+  const regex = new RegExp(value, 'i');
 
   const users = await User.find({
     [field]: { $regex: regex },

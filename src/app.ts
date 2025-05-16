@@ -1,4 +1,3 @@
-// src/app.ts
 import dotenv from 'dotenv';
 dotenv.config();
 import express, { Request, Response, NextFunction } from 'express';
@@ -9,13 +8,13 @@ import cors from 'cors';
 
 const app = express();
 const corsOptions = {
-    origin: '*', // Allow requests from this frontend URL
-    methods: ['GET', 'POST', 'OPTIONS', 'PATCH', 'PUT'], // Allow the necessary HTTP methods
-    allowedHeaders: ['Content-Type', 'Authorization'], // Allow specific headers
-    credentials: false, // If you're sending cookies or authentication tokens, this should be true
+    origin: '*', 
+    methods: ['GET', 'POST', 'OPTIONS', 'PATCH', 'PUT'], 
+    allowedHeaders: ['Content-Type', 'Authorization'], 
+    credentials: false, 
 };
 
-app.use(cors(corsOptions)); // Use CORS with custom options
+app.use(cors(corsOptions)); 
 
 
 app.use(express.json());
